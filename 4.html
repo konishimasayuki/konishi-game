@@ -1,0 +1,797 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#2a74cf">
+<title>Golog Golf 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Noto+Sans+JP:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#9ccbee;
+  --panel:rgba(9,24,38,.5);
+  --ink:#ffffff;
+  --sub:rgba(255,255,255,.76);
+  --line:rgba(255,255,255,.22);
+  --card:#ffffff;
+  --card-ink:#132330;
+  --card-sub:#5b6d7a;
+  --card-line:#e3eaef;
+  --navy:#1b6fa8;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0d1a25; --panel:rgba(6,14,22,.6);
+    --card:#142330; --card-ink:#eaf2f7; --card-sub:#93a7b6; --card-line:#223747;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0d1a25; --panel:rgba(6,14,22,.6);
+  --card:#142330; --card-ink:#eaf2f7; --card-sub:#93a7b6; --card-line:#223747;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--bg);color:var(--ink);
+  font-family:'Noto Sans JP',system-ui,-apple-system,'Hiragino Kaku Gothic ProN','Hiragino Sans',Meiryo,sans-serif;
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;touch-action:none;overscroll-behavior:none}
+button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:pointer;touch-action:manipulation}
+button:focus-visible{outline:3px solid #ffd23f;outline-offset:2px}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block}
+.num{font-family:'Barlow Condensed','Arial Narrow',system-ui,sans-serif;font-weight:800;letter-spacing:.2px}
+.panel{background:var(--panel);-webkit-backdrop-filter:blur(12px) saturate(1.25);backdrop-filter:blur(12px) saturate(1.25);
+  border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 28px rgba(0,20,40,.22)}
+
+/* ---------- 上部HUD ---------- */
+.hud-top{position:fixed;top:0;left:0;right:0;z-index:5;padding:calc(env(safe-area-inset-top,0px) + 10px) 10px 0;
+  display:grid;grid-template-columns:1fr auto 1fr;align-items:start;gap:8px;pointer-events:none;transition:opacity .3s}
+.hole{justify-self:start;padding:8px 12px 9px;min-width:92px}
+.hole .no{font-size:32px;line-height:.82}
+.hole .no span{font-size:13px;opacity:.72;margin-right:4px;font-weight:700}
+.hole .meta{margin-top:5px;font-size:11px;font-weight:700;color:var(--sub);display:flex;gap:8px}
+.hole .stroke{margin-top:6px;font-size:11px;font-weight:700;display:flex;align-items:baseline;gap:6px;color:var(--sub)}
+.hole .stroke b{font-size:22px;color:#fff;line-height:.9}
+.pin{justify-self:center;padding:7px 14px 8px;text-align:center;min-width:116px}
+.pin .lbl{font-size:10px;font-weight:700;color:var(--sub)}
+.pin .d{font-size:40px;line-height:.88}
+.pin .d small{font-size:16px;margin-left:2px;opacity:.8}
+.pin .row{display:flex;justify-content:center;gap:6px;margin-top:5px;align-items:center}
+.chip{font-size:10px;font-weight:900;padding:3px 8px;border-radius:999px;background:#7fdc6a;color:#10301a}
+.elev{font-size:10.5px;font-weight:700;color:var(--sub);white-space:nowrap}
+.right{justify-self:end;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.wind{width:80px;padding:6px 6px 7px;text-align:center}
+.wind .lbl{font-size:10px;font-weight:700;color:var(--sub)}
+.wind svg{width:46px;height:46px;display:block;margin:2px auto 1px}
+.wind .spd{font-size:19px;line-height:1}
+.wind .spd small{font-size:11px;opacity:.8;margin-left:1px}
+.iconbtn{pointer-events:auto;width:46px;height:46px;border-radius:14px;display:grid;place-items:center;transition:background .15s}
+.iconbtn.on{background:rgba(255,205,46,.92);color:#3a2600;border-color:transparent}
+
+/* ---------- 下部HUD ---------- */
+.hud-bottom{position:fixed;left:0;right:0;bottom:0;z-index:5;padding:0 10px calc(env(safe-area-inset-bottom,0px) + 12px);pointer-events:none;transition:opacity .3s}
+.hud-bottom.busy .controls{opacity:.45}
+.gauge{position:relative;height:30px;border-radius:15px;background:linear-gradient(180deg,rgba(5,12,20,.74),rgba(5,12,20,.56));
+  border:1px solid var(--line);overflow:hidden;margin:0 0 10px;box-shadow:inset 0 2px 6px rgba(0,0,0,.35)}
+.g-fill{position:absolute;top:4px;bottom:4px;left:6%;width:0;border-radius:4px;
+  background:linear-gradient(90deg,#39d98a 0%,#ffd23f 62%,#ff7a2f 92%,#ff3d57 100%)}
+.g-tick{position:absolute;top:7px;bottom:7px;width:1px;background:rgba(255,255,255,.3)}
+.g-impact{position:absolute;top:0;bottom:0;left:calc(6% - 6px);width:12px;background:rgba(255,255,255,.16);
+  border-left:1px solid rgba(255,255,255,.35);border-right:1px solid rgba(255,255,255,.35)}
+.g-impact::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:2px;margin-left:-1px;background:#fff}
+.g-target{position:absolute;top:3px;bottom:3px;width:0;border-left:2px dashed rgba(255,255,255,.9);display:none}
+.g-power{position:absolute;top:0;bottom:0;width:3px;margin-left:-1.5px;background:#ff4d6d;box-shadow:0 0 8px #ff4d6d;display:none}
+.g-marker{position:absolute;top:-1px;bottom:-1px;left:6%;width:5px;margin-left:-2.5px;border-radius:3px;background:#fff;box-shadow:0 0 12px #fff,0 0 2px #000}
+.g-text{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:16px;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.g-hint{position:absolute;left:calc(6% + 14px);top:50%;transform:translateY(-50%);font-size:10.5px;font-weight:700;color:rgba(255,255,255,.72);white-space:nowrap}
+.controls{display:flex;align-items:center;gap:8px;transition:opacity .2s}
+.aim{pointer-events:auto;flex:none;width:50px;height:58px;border-radius:14px;display:grid;place-items:center}
+.aim:active,.club button:active{background:rgba(255,255,255,.28)}
+.club{pointer-events:auto;flex:1;min-width:0;height:58px;display:flex;align-items:center;justify-content:space-between;padding:0 3px}
+.club button{width:34px;height:48px;border-radius:10px;display:grid;place-items:center;flex:none}
+.club .mid{text-align:center;line-height:1;min-width:0}
+.club .nm{font-size:27px}
+.club .ds{font-size:10.5px;font-weight:700;color:var(--sub);margin-top:3px;white-space:nowrap}
+.shot{pointer-events:auto;flex:none;width:86px;height:86px;border-radius:50%;
+  background:radial-gradient(circle at 34% 28%,#fff0a8 0%,#ffcd2e 45%,#e89400 100%);color:#3b2500;font-size:24px;line-height:1;
+  border:3px solid rgba(255,255,255,.78);box-shadow:0 10px 26px rgba(229,150,0,.45),inset 0 -5px 0 rgba(0,0,0,.14);transition:transform .08s}
+.shot:active{transform:scale(.93)}
+.shot.hot{background:radial-gradient(circle at 34% 28%,#ffd1d6 0%,#ff5f73 50%,#d81b3b 100%);color:#fff;
+  box-shadow:0 10px 26px rgba(216,27,59,.45),inset 0 -5px 0 rgba(0,0,0,.14)}
+.shot small{display:block;font-size:10px;font-family:'Noto Sans JP',sans-serif;font-weight:900;margin-top:3px;opacity:.82}
+.dim .hud-top,.dim .hud-bottom{opacity:0;pointer-events:none}
+.dim .hud-top *,.dim .hud-bottom *{pointer-events:none!important}
+.hidden{display:none!important}
+
+/* ---------- トースト ---------- */
+.toast{position:fixed;left:50%;top:38%;z-index:8;transform:translate(-50%,-50%);text-align:center;pointer-events:none;opacity:0;width:92%}
+.toast.show{animation:pop 2s ease forwards}
+.toast .big{font-size:54px;line-height:.9;text-shadow:0 4px 0 rgba(0,0,0,.16),0 10px 34px rgba(0,0,0,.35)}
+.toast .sub{margin-top:9px;font-family:'Noto Sans JP',sans-serif;font-size:14px;font-weight:900;letter-spacing:0;text-shadow:0 2px 12px rgba(0,0,0,.55)}
+@keyframes pop{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}12%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}
+  22%{transform:translate(-50%,-50%) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-60%) scale(1)}}
+@media (prefers-reduced-motion: reduce){.toast.show{animation:fadeonly 2s ease forwards}@keyframes fadeonly{0%,80%{opacity:1}100%{opacity:0}}}
+
+/* ---------- オーバーレイ ---------- */
+.overlay{position:fixed;inset:0;z-index:10;display:grid;place-items:end center;
+  padding:calc(env(safe-area-inset-top,0px) + 16px) 16px calc(env(safe-area-inset-bottom,0px) + 18px);
+  background:linear-gradient(180deg,rgba(6,18,30,0) 30%,rgba(6,18,30,.55))}
+.card{width:100%;max-width:420px;background:var(--card);color:var(--card-ink);border-radius:24px;padding:22px 20px 18px;box-shadow:0 24px 60px rgba(0,10,25,.45)}
+.logo{position:fixed;left:0;right:0;top:calc(env(safe-area-inset-top,0px) + 8vh);text-align:center;pointer-events:none}
+.logo .t{font-size:clamp(52px,15vw,84px);line-height:.8;color:#fff;letter-spacing:1px;text-shadow:0 6px 0 rgba(20,60,110,.35),0 12px 40px rgba(0,30,70,.4)}
+.logo .s{margin-top:10px;font-size:13px;font-weight:900;color:#fff;text-shadow:0 2px 12px rgba(0,30,60,.5)}
+.how{list-style:none;margin:0 0 12px;padding:0;display:grid;gap:8px;counter-reset:s}
+.how li{counter-increment:s;display:flex;gap:10px;align-items:center;font-size:13.5px;font-weight:500}
+.how li::before{content:counter(s);flex:none;width:26px;height:26px;border-radius:50%;background:var(--navy);color:#fff;display:grid;place-items:center;
+  font-weight:900;font-size:12px}
+.how b{font-weight:900}
+.tips{font-size:12px;color:var(--card-sub);line-height:1.75;margin:0 0 16px}
+.primary{width:100%;height:56px;border-radius:16px;background:linear-gradient(180deg,#ffd23f,#f0a500);color:#3b2500;font-size:23px;
+  box-shadow:0 8px 20px rgba(240,165,0,.38),inset 0 -4px 0 rgba(0,0,0,.12)}
+.primary:active{transform:translateY(1px)}
+.result{font-size:46px;text-align:center;line-height:.9}
+.rsub{text-align:center;font-size:13px;color:var(--card-sub);font-weight:700;margin-top:8px}
+.sc{width:100%;border-collapse:collapse;margin:16px 0 16px;font-size:13px}
+.sc th,.sc td{text-align:center;padding:7px 2px;border-bottom:1px solid var(--card-line)}
+.sc th{font-size:11px;color:var(--card-sub);font-weight:700}
+.sc td.lab{text-align:left;font-weight:700;color:var(--card-sub);font-size:11px;width:56px}
+.sc .tot{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:19px}
+.mk{display:inline-grid;place-items:center;width:30px;height:30px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:18px}
+.mk.bd{border:2px solid #e8413c;border-radius:50%;color:#e8413c}
+.mk.eg{border:2px solid #e8413c;border-radius:50%;color:#e8413c;box-shadow:0 0 0 2px var(--card),0 0 0 4px #e8413c}
+.mk.bg{border:2px solid #2e7dd1;border-radius:4px;color:#2e7dd1}
+.mk.db{border:2px solid #2e7dd1;border-radius:4px;color:#2e7dd1;box-shadow:0 0 0 2px var(--card),0 0 0 4px #2e7dd1}
+.loader{position:fixed;inset:0;z-index:12;display:grid;place-items:center;background:linear-gradient(180deg,#5fa6e0,#c4e5f8)}
+.loader .in{text-align:center;color:#fff}
+.spin{width:46px;height:46px;border-radius:50%;border:4px solid rgba(255,255,255,.35);border-top-color:#fff;margin:0 auto 14px;animation:rot .8s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+.loader .lt{font-size:14px;font-weight:900;text-shadow:0 2px 10px rgba(0,40,80,.35)}
+</style>
+</head>
+<body class="dim">
+<canvas id="c"></canvas>
+
+<div class="hud-top">
+  <div class="panel hole">
+    <div class="no num"><span>HOLE</span><b id="hNo">1</b></div>
+    <div class="meta"><span id="hPar">PAR 4</span><span id="hYd">400Y</span></div>
+    <div class="stroke">打数<b class="num" id="hStroke">0</b></div>
+  </div>
+  <div class="panel pin">
+    <div class="lbl">ピンまで</div>
+    <div class="d num" id="pinD">0<small>Y</small></div>
+    <div class="row"><span class="chip" id="lie">ティー</span><span class="elev" id="elev"></span></div>
+  </div>
+  <div class="right">
+    <div class="panel wind">
+      <div class="lbl">風</div>
+      <svg viewBox="0 0 48 48" aria-hidden="true">
+        <circle cx="24" cy="24" r="21" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1.5"/>
+        <circle cx="24" cy="24" r="13" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="1"/>
+        <path d="M24 3.5v4" stroke="rgba(255,255,255,.6)" stroke-width="2" stroke-linecap="round"/>
+        <g id="wArrow"><path d="M24 8 L31.5 23 L26.8 23 L26.8 39 L21.2 39 L21.2 23 L16.5 23 Z" fill="#ffc933" stroke="#3a2600" stroke-width="1" stroke-linejoin="round"/></g>
+      </svg>
+      <div class="spd num" id="wSpd">0<small>m</small></div>
+    </div>
+    <button class="panel iconbtn" id="viewBtn" aria-label="落下地点を見る">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+    </button>
+  </div>
+</div>
+
+<div class="hud-bottom" id="hudB">
+  <div class="gauge" id="gauge">
+    <div class="g-fill" id="gFill"></div>
+    <div class="g-impact"></div>
+    <div class="g-target" id="gTarget"></div>
+    <div class="g-power" id="gPower"></div>
+    <div class="g-marker" id="gMarker"></div>
+    <div class="g-hint" id="gHint">SHOTを押してスタート</div>
+    <div class="g-text num" id="gText"></div>
+  </div>
+  <div class="controls">
+    <button class="panel aim" id="aimL" aria-label="左に向ける">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-2"/></svg>
+    </button>
+    <div class="panel club">
+      <button id="clubPrev" aria-label="長いクラブ"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <div class="mid"><div class="nm num" id="cName">1W</div><div class="ds" id="cDist">235Y</div></div>
+      <button id="clubNext" aria-label="短いクラブ"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
+    </div>
+    <button class="panel aim" id="aimR" aria-label="右に向ける">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h2"/></svg>
+    </button>
+    <button class="shot num" id="shotBtn">SHOT<small id="shotSub">スタート</small></button>
+  </div>
+</div>
+
+<div class="toast num" id="toast"><div class="big" id="tBig"></div><div class="sub" id="tSub"></div></div>
+
+<div class="overlay hidden" id="title">
+  <div class="logo"><div class="t num">GOLOG GOLF</div><div class="s">3ホールのショートラウンド</div></div>
+  <div class="card">
+    <ol class="how">
+      <li><span><b>SHOT</b>を押すとゲージが走り出す</span></li>
+      <li><span>もう一度押して<b>パワー</b>を決める</span></li>
+      <li><span>戻ってくるマーカーを<b>白いライン</b>で止める</span></li>
+    </ol>
+    <p class="tips">画面を左右にドラッグするか◀▶で方向を調整。‹ ›でクラブを持ち替え。風と傾斜を読んで、グリーンの点線の流れでラインを読もう。</p>
+    <button class="primary num" id="playBtn">PLAY</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="cardOv">
+  <div class="card" id="cardBody"></div>
+</div>
+
+<div class="loader" id="loader"><div class="in"><div class="spin"></div><div class="lt" id="ldText">3Dエンジンを読み込み中…</div></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+if(!window.THREE){ $('ldText').textContent='3Dエンジンを読み込めませんでした。通信状況を確認して再読み込みしてください。'; return; }
+const V3=THREE.Vector3;
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const smooth=(a,b,x)=>{const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t);};
+const lc=h=>new THREE.Color(h).convertSRGBToLinear();
+const isSmall=Math.min(innerWidth,innerHeight)<700;
+
+/* ================= データ ================= */
+const HALF=300, WL=-0.45, G=9.8, R=0.11, SIM=1.3, KW=0.2;
+const CLUBS=[
+  {id:'1W',dist:235,ang:19,spin:1.0},
+  {id:'3W',dist:212,ang:21,spin:0.95},
+  {id:'5I',dist:178,ang:26,spin:0.85},
+  {id:'7I',dist:152,ang:31,spin:0.78},
+  {id:'9I',dist:128,ang:37,spin:0.7},
+  {id:'PW',dist:108,ang:42,spin:0.62},
+  {id:'SW',dist:78, ang:50,spin:0.55},
+  {id:'PT',dist:0,  ang:0, spin:0},
+];
+const SURF={
+  tee:    {name:'ティー',      e:.22,h:.42,mu:8,  mul:1,   col:'#9ee07a'},
+  fairway:{name:'フェアウェイ',e:.22,h:.42,mu:8,  mul:1,   col:'#7fdc6a'},
+  fringe: {name:'カラー',      e:.14,h:.36,mu:3.2,mul:.95, col:'#a8e682'},
+  green:  {name:'グリーン',    e:.12,h:.32,mu:1.6,mul:1,   col:'#c2f59a'},
+  rough:  {name:'ラフ',        e:.12,h:.25,mu:15, mul:.85, col:'#4f9a3a'},
+  bunker: {name:'バンカー',    e:.02,h:.06,mu:38, mul:.7,  col:'#f0d9a0'},
+  water:  {name:'池',          e:0,h:0,mu:99,mul:0,col:'#5bb2e8'},
+  ob:     {name:'OB',          e:0,h:0,mu:99,mul:0,col:'#ffffff'},
+};
+const HOLES=[
+  {name:'グリーンヒル', par:4, seed:1.3, fw:34, fwStart:55,
+   pts:[[0,205],[0,70],[16,-60],[12,-178]], green:{x:12,z:-190,r:14}, pin:{x:15,z:-193}, tilt:[0.022,-0.014],
+   bunkers:[{x:-24,z:-30,rx:10,rz:7,a:.4},{x:36,z:-140,rx:8,rz:11,a:.2},{x:-6,z:-207,rx:7,rz:5,a:0},{x:29,z:-196,rx:5,rz:7,a:.5}],
+   ponds:[]},
+  {name:'レイクサイド', par:3, seed:2.7, fw:24, fwStart:122,
+   pts:[[0,92],[0,-40],[-3,-75]], green:{x:-4,z:-85,r:15}, pin:{x:-8,z:-89}, tilt:[-0.026,0.018],
+   bunkers:[{x:19,z:-93,rx:6,rz:8,a:.3},{x:-24,z:-74,rx:6,rz:5,a:.2},{x:-3,z:-106,rx:9,rz:4,a:0}],
+   ponds:[{x:0,z:2,rx:42,rz:36}]},
+  {name:'ロングドッグ', par:5, seed:4.1, fw:38, fwStart:60,
+   pts:[[40,255],[40,110],[22,-10],[-38,-125],[-66,-238]], green:{x:-70,z:-252,r:16}, pin:{x:-66,z:-256}, tilt:[0.018,0.026],
+   bunkers:[{x:66,z:60,rx:11,rz:8,a:.3},{x:-4,z:-40,rx:9,rz:9,a:0},{x:-52,z:-233,rx:7,rz:6,a:.4},{x:-92,z:-258,rx:6,rz:8,a:.1}],
+   ponds:[{x:12,z:-150,rx:22,rz:30}]},
+];
+
+/* ================= コース形状 ================= */
+let H=null, SEG=[], PR_D=0, PR_T=0;
+function baseRaw(x,z){const s=H.seed;return 1.5*Math.sin(x*0.019+s)*Math.cos(z*0.015+s*0.5)+0.9*Math.sin(z*0.027+x*0.011+s*2)+0.45*Math.sin(x*0.052+z*0.041+s*3);}
+function prepHole(def){
+  H=JSON.parse(JSON.stringify(def));
+  SEG=[];let cum=0;
+  for(let i=0;i<H.pts.length-1;i++){const ax=H.pts[i][0],az=H.pts[i][1],bx=H.pts[i+1][0],bz=H.pts[i+1][1];
+    const dx=bx-ax,dz=bz-az,len=Math.hypot(dx,dz);SEG.push({ax,az,dx,dz,len,cum});cum+=len;}
+  H.len=cum;
+  H.tee={x:H.pts[0][0],z:H.pts[0][1]};
+  H.bunkers.forEach((b,i)=>{b.c=Math.cos(b.a);b.s=Math.sin(b.a);b.w=H.seed*3+i*1.7;});
+  H.teeH=baseRaw(H.tee.x,H.tee.z)+0.9;
+  H.greenH=baseRaw(H.green.x,H.green.z)+0.35;
+}
+function project(x,z){let best=1e18,bt=0;
+  for(let i=0;i<SEG.length;i++){const S=SEG[i];let s=((x-S.ax)*S.dx+(z-S.az)*S.dz)/(S.len*S.len);s=s<0?0:s>1?1:s;
+    const px=S.ax+S.dx*s-x,pz=S.az+S.dz*s-z,d2=px*px+pz*pz;if(d2<best){best=d2;bt=S.cum+s*S.len;}}
+  PR_D=Math.sqrt(best);PR_T=bt;}
+function pointAt(t){for(let i=0;i<SEG.length;i++){const S=SEG[i];if(t<=S.cum+S.len||i===SEG.length-1){const s=clamp((t-S.cum)/S.len,0,1);return {x:S.ax+S.dx*s,z:S.az+S.dz*s};}}return {x:H.green.x,z:H.green.z};}
+function fwHalf(t){return H.fw/2*(1+0.13*Math.sin(t*0.045+H.seed));}
+function bunkerQ(b,x,z){const dx=x-b.x,dz=z-b.z,mx=Math.max(b.rx,b.rz)*1.45;if(dx>mx||dx<-mx||dz>mx||dz<-mx)return 9;const u=dx*b.c+dz*b.s,v=-dx*b.s+dz*b.c;const q=Math.hypot(u/b.rx,v/b.rz);
+  const an=Math.atan2(v,u);return q*(1+0.11*Math.sin(an*3+b.w)+0.06*Math.sin(an*5+b.w*2));}
+function greenSurf(x,z){const g=H.green;return H.greenH+H.tilt[0]*(x-g.x)+H.tilt[1]*(z-g.z)+0.1*Math.sin((x-g.x)*0.23+H.seed)*Math.cos((z-g.z)*0.19+H.seed*0.7);}
+function heightWith(x,z,d,t){
+  let h=baseRaw(x,z);
+  const hw=fwHalf(t);
+  h+=smooth(hw+3,hw+22,d)*(0.9+0.6*Math.sin(t*0.07+H.seed));
+  h+=smooth(92,210,d)*11;
+  const m=Math.max(Math.abs(x),Math.abs(z)); if(m>300) h+=smooth(300,720,m)*42;
+  const dT=Math.hypot(x-H.tee.x,z-H.tee.z);
+  if(dT<13){const b=1-smooth(6,13,dT);h+=(H.teeH-h)*b;}
+  const gr=H.green.r, dG=Math.hypot(x-H.green.x,z-H.green.z);
+  if(dG<gr+11){const b=1-smooth(gr+1.5,gr+11,dG);h+=(greenSurf(x,z)-h)*b;}
+  for(let i=0;i<H.bunkers.length;i++){const q=bunkerQ(H.bunkers[i],x,z);
+    if(q<1.3){h-=0.6*(1-smooth(0.7,1.0,q));h+=0.28*smooth(0.92,1.04,q)*(1-smooth(1.04,1.3,q));}}
+  for(let i=0;i<H.ponds.length;i++){const p=H.ponds[i];const q=Math.hypot((x-p.x)/p.rx,(z-p.z)/p.rz);
+    if(q<1.45){const b=1-smooth(0.8,1.12,q);h+=(-2.2-h)*b;}}
+  return h;
+}
+function Hgt(x,z){project(x,z);return heightWith(x,z,PR_D,PR_T);}
+function surfaceWith(x,z,d,t){
+  if(x<-HALF+6||x>HALF-6||z<-HALF+6||z>HALF-6) return 'ob';
+  for(let i=0;i<H.ponds.length;i++){const p=H.ponds[i];if(Math.hypot((x-p.x)/p.rx,(z-p.z)/p.rz)<1.15&&heightWith(x,z,d,t)<WL) return 'water';}
+  const dG=Math.hypot(x-H.green.x,z-H.green.z);
+  if(dG<H.green.r) return 'green';
+  if(dG<H.green.r+2.2) return 'fringe';
+  for(let i=0;i<H.bunkers.length;i++){if(bunkerQ(H.bunkers[i],x,z)<1) return 'bunker';}
+  if(Math.abs(x-H.tee.x)<4.5&&Math.abs(z-H.tee.z)<6.5) return 'tee';
+  if(d>108) return 'ob';
+  if(t>=H.fwStart&&t<=H.len-5&&d<fwHalf(t)) return 'fairway';
+  return 'rough';
+}
+function surfaceAt(x,z){project(x,z);return surfaceWith(x,z,PR_D,PR_T);}
+function grad(x,z){const e=0.12;return [(Hgt(x+e,z)-Hgt(x-e,z))/(2*e),(Hgt(x,z+e)-Hgt(x,z-e))/(2*e)];}
+function greenGrad(x,z){const e=0.1;return [(greenSurf(x+e,z)-greenSurf(x-e,z))/(2*e),(greenSurf(x,z+e)-greenSurf(x,z-e))/(2*e)];}
+
+/* ノイズ */
+function hash2(ix,iz){let h=(Math.imul(ix,374761393)+Math.imul(iz,668265263))|0;h=Math.imul(h^(h>>>13),1274126177);h=h^(h>>>16);return (h>>>0)/4294967295;}
+function vnoise(x,z){const ix=Math.floor(x),iz=Math.floor(z);let fx=x-ix,fz=z-iz;fx=fx*fx*(3-2*fx);fz=fz*fz*(3-2*fz);
+  const a=hash2(ix,iz),b=hash2(ix+1,iz),c=hash2(ix,iz+1),d=hash2(ix+1,iz+1);return a+(b-a)*fx+(c-a)*fz+(a-b-c+d)*fx*fz;}
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+
+/* ================= Three.js 基本 ================= */
+const canvas=$('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+renderer.setSize(innerWidth,innerHeight,false);
+renderer.outputEncoding=THREE.sRGBEncoding;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.08;
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFShadowMap;
+const scene=new THREE.Scene();
+scene.fog=new THREE.Fog(0xd6ebf7,330,1500);
+const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,0.08,4200);
+function fitCam(){const a=innerWidth/innerHeight;camera.aspect=a;camera.fov=a<0.75?62:50;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight,false);}
+fitCam(); addEventListener('resize',fitCam);
+
+const SUN_DIR=new V3(-0.45,0.78,0.43).normalize();
+function skyMaterial(){return new THREE.ShaderMaterial({
+  uniforms:{top:{value:new THREE.Color('#2a74cf')},mid:{value:new THREE.Color('#86bff0')},bot:{value:new THREE.Color('#dcefFa')},sun:{value:SUN_DIR}},
+  vertexShader:'varying vec3 vD;void main(){vD=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
+  fragmentShader:'uniform vec3 top,mid,bot,sun;varying vec3 vD;void main(){vec3 d=normalize(vD);float h=d.y;vec3 c=mix(bot,mid,smoothstep(-0.02,0.16,h));c=mix(c,top,smoothstep(0.16,0.7,h));c=mix(c,bot*0.9,1.0-smoothstep(-0.3,0.0,h));float s=max(dot(d,sun),0.0);c+=vec3(1.0,0.94,0.8)*(pow(s,900.0)*2.2+pow(s,14.0)*0.2);gl_FragColor=vec4(c,1.0);}',
+  side:THREE.BackSide,depthWrite:false,fog:false});}
+const sky=new THREE.Mesh(new THREE.SphereGeometry(1500,32,16),skyMaterial());
+sky.renderOrder=-10;sky.frustumCulled=false;scene.add(sky);
+// 環境マップ（空を映り込ませる）
+
+const hemi=new THREE.HemisphereLight(0xdcefff,0x6f8f4a,1.05);scene.add(hemi);scene.add(new THREE.AmbientLight(0xffffff,0.22));
+const sun=new THREE.DirectionalLight(0xfff1dc,1.7);
+sun.castShadow=true;sun.shadow.mapSize.set(isSmall?1024:2048,isSmall?1024:2048);sun.shadow.bias=-0.0008;sun.shadow.normalBias=0.04;
+sun.shadow.camera.near=10;sun.shadow.camera.far=700;scene.add(sun);scene.add(sun.target);
+function setShadow(s){const c=sun.shadow.camera;c.left=-s;c.right=s;c.top=s;c.bottom=-s;c.updateProjectionMatrix();}
+setShadow(72);
+
+function alphaTex(N,fn){const d=new Uint8Array(N*N*4);for(let y=0;y<N;y++)for(let x=0;x<N;x++){const i=(y*N+x)*4;d[i]=d[i+1]=d[i+2]=255;d[i+3]=Math.round(clamp(fn(x+0.5,y+0.5),0,1)*255);}
+  const t=new THREE.DataTexture(d,N,N,THREE.RGBAFormat);t.magFilter=THREE.LinearFilter;t.minFilter=THREE.LinearMipmapLinearFilter;t.generateMipmaps=true;t.needsUpdate=true;return t;}
+// 遠景の山と雲
+{const mat=new THREE.MeshStandardMaterial({color:lc('#5f8499'),roughness:1,flatShading:true,envMapIntensity:0.3});
+ const rnd=mulberry(99);
+ for(let i=0;i<34;i++){const a=i/34*Math.PI*2+rnd()*0.1,r=1050+rnd()*160,h=90+rnd()*150;
+   const m=new THREE.Mesh(new THREE.ConeGeometry(120+rnd()*120,h,7),mat);m.position.set(Math.sin(a)*r,h/2+10,Math.cos(a)*r);m.rotation.y=rnd()*3;scene.add(m);}
+ const blobs=[];for(let i=0;i<9;i++)blobs.push([50+rnd()*156,110+rnd()*50,40+rnd()*50]);
+ const tex=alphaTex(256,(x,y)=>{let a=0;for(const b of blobs){const d=Math.hypot(x-b[0],y-b[1])/b[2];if(d<1)a=1-(1-a)*(1-(1-d)*(1-d)*0.95);}return a;});
+ for(let i=0;i<16;i++){const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,fog:false,opacity:0.85}));
+   const a=rnd()*Math.PI*2,r=900+rnd()*400;sp.position.set(Math.sin(a)*r,160+rnd()*220,Math.cos(a)*r);const s=260+rnd()*260;sp.scale.set(s,s*0.45,1);scene.add(sp);}}
+
+// 丸いドット用テクスチャ
+const dotTex=alphaTex(64,(x,y)=>{const d=Math.hypot(x-32,y-32)/30;return d<0.6?1:d<1?(1-d)/0.4:0;});
+
+/* ================= マテリアル ================= */
+const timeU={value:0};
+const NOISE_GLSL='varying vec3 vWP;\nfloat gH(vec2 p){p=mod(p,289.0);return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}\nfloat gN(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(gH(i),gH(i+vec2(1.0,0.0)),f.x),mix(gH(i+vec2(0.0,1.0)),gH(i+vec2(1.0,1.0)),f.x),f.y);}';
+function withWorldPos(sh){sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vWP;').replace('#include <begin_vertex>','#include <begin_vertex>\nvWP=(modelMatrix*vec4(transformed,1.0)).xyz;');}
+function terrainMaterial(tex,color){
+  const m=new THREE.MeshStandardMaterial({map:tex||null,color:color||0xffffff,roughness:0.95,metalness:0,envMapIntensity:0.42});
+  m.onBeforeCompile=sh=>{withWorldPos(sh);
+    sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\n'+NOISE_GLSL)
+      .replace('#include <map_fragment>','#include <map_fragment>\n{float n1=gN(vWP.xz*3.1);float n2=gN(vWP.xz*11.0+7.3);float n3=gN(vWP.xz*0.9+2.1);diffuseColor.rgb*=0.84+0.14*n1+0.12*n2+0.08*n3;}');};
+  return m;}
+function waterMaterial(){
+  const m=new THREE.MeshStandardMaterial({color:lc('#2f86b8'),roughness:0.06,metalness:0.15,transparent:true,opacity:0.86,envMapIntensity:1.5});
+  m.onBeforeCompile=sh=>{sh.uniforms.uT=timeU;withWorldPos(sh);
+    sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vWP;\nuniform float uT;')
+      .replace('#include <normal_fragment_begin>','#include <normal_fragment_begin>\n{vec2 p=vWP.xz;float a=sin(p.x*0.9+uT*1.6)+sin(p.y*1.3-uT*1.2)+sin((p.x+p.y)*0.6+uT*0.9);float b=cos(p.x*1.1-uT*1.3)+cos(p.y*0.8+uT*1.7);normal=normalize(normal+vec3(a,0.0,b)*0.035);}');};
+  return m;}
+
+/* ================= ホール構築 ================= */
+const holeGroup=new THREE.Group();scene.add(holeGroup);
+let flagMesh=null,flagBase=null,flagGroup=null,gridObj=null,flowObj=null,flowData=null;
+function disposeGroup(g){g.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material){(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{if(m.map&&m.map!==dotTex)m.map.dispose();m.dispose();});}});
+  while(g.children.length)g.remove(g.children[0]);}
+
+const COL={fwL:[124,192,70],fwD:[106,172,58],fr:[110,184,66],grL:[136,212,90],grD:[120,196,78],fc:[92,156,54],
+  ro:[70,128,46],roF:[58,108,40],sand:[230,212,162],lip:[192,168,118],bed:[56,92,88],teeL:[122,188,70],teeD:[104,168,58]};
+function buildTextureCanvas(){
+  const N=isSmall?1024:1400,cv=document.createElement('canvas');cv.width=cv.height=N;
+  const ctx=cv.getContext('2d'),img=ctx.createImageData(N,N),D=img.data,sc=(2*HALF)/N;let o=0;
+  for(let py=0;py<N;py++){const z=-HALF+(py+0.5)*sc;
+    for(let px=0;px<N;px++,o+=4){const x=-HALF+(px+0.5)*sc;
+      project(x,z);const d=PR_D,t=PR_T,s=surfaceWith(x,z,d,t);let c;
+      if(s==='fairway'){c=(Math.floor(t/7)&1)?COL.fwL:COL.fwD;}
+      else if(s==='tee'){c=(Math.floor((x-H.tee.x+50)/1.6)&1)?COL.teeL:COL.teeD;}
+      else if(s==='green'){const u=x-H.green.x,v=z-H.green.z;c=((Math.floor((u+v)/2.2)+Math.floor((u-v)/2.2))&1)?COL.grL:COL.grD;}
+      else if(s==='fringe'){c=COL.fr;}
+      else if(s==='bunker'){let q=9;for(let i=0;i<H.bunkers.length;i++)q=Math.min(q,bunkerQ(H.bunkers[i],x,z));c=q>0.86?COL.lip:COL.sand;}
+      else if(s==='water'){c=COL.bed;}
+      else{ if(t>H.fwStart-5&&t<H.len&&d<fwHalf(t)+2.8) c=COL.fc;
+        else {const f=smooth(40,110,d);c=[COL.ro[0]+(COL.roF[0]-COL.ro[0])*f,COL.ro[1]+(COL.roF[1]-COL.ro[1])*f,COL.ro[2]+(COL.roF[2]-COL.ro[2])*f];}
+        if(s==='ob'){c=[c[0]*0.93,c[1]*0.93,c[2]*0.93];}}
+      const n1=vnoise(x*0.08,z*0.08),n2=vnoise(x*0.33+17,z*0.33+9);
+      const k=(s==='bunker'?0.95+0.08*n2:0.88+0.18*n1+0.1*(n2-0.5));
+      D[o]=clamp(c[0]*k,0,255);D[o+1]=clamp(c[1]*k,0,255);D[o+2]=clamp(c[2]*k,0,255);D[o+3]=255;}}
+  ctx.putImageData(img,0,0);return cv;}
+function buildTerrain(){
+  const SEGN=isSmall?200:240,geo=new THREE.PlaneGeometry(600,600,SEGN,SEGN);geo.rotateX(-Math.PI/2);
+  const pos=geo.attributes.position;for(let i=0;i<pos.count;i++)pos.setY(i,Hgt(pos.getX(i),pos.getZ(i)));geo.computeVertexNormals();
+  const tex=new THREE.CanvasTexture(buildTextureCanvas());tex.encoding=THREE.sRGBEncoding;tex.anisotropy=renderer.capabilities.getMaxAnisotropy();
+  const mesh=new THREE.Mesh(geo,terrainMaterial(tex));mesh.receiveShadow=true;holeGroup.add(mesh);
+  // 外周（地平線まで続く丘）
+  const og=new THREE.PlaneGeometry(1800,1800,90,90);og.rotateX(-Math.PI/2);const op=og.attributes.position;
+  for(let i=0;i<op.count;i++){const x=op.getX(i),z=op.getZ(i);let y=Hgt(x,z);if(Math.abs(x)<299&&Math.abs(z)<299)y-=4;op.setY(i,y);}
+  og.computeVertexNormals();const om=new THREE.Mesh(og,terrainMaterial(null,lc('#4a8238')));om.receiveShadow=true;holeGroup.add(om);}
+function buildWater(){for(const p of H.ponds){const g=new THREE.CircleGeometry(1,72);g.rotateX(-Math.PI/2);
+  const w=new THREE.Mesh(g,waterMaterial());w.scale.set(p.rx*1.16,1,p.rz*1.16);w.position.set(p.x,WL,p.z);w.receiveShadow=true;holeGroup.add(w);}}
+function buildTrees(){
+  const rnd=mulberry(Math.floor(H.seed*1000)+7),list=[];
+  for(let i=0;i<5600&&list.length<760;i++){const x=(rnd()*2-1)*292,z=(rnd()*2-1)*292;project(x,z);const d=PR_D,t=PR_T;
+    if(d<fwHalf(t)+12)continue;
+    if(Math.hypot(x-H.green.x,z-H.green.z)<H.green.r+20)continue;
+    if(Math.hypot(x-H.tee.x,z-H.tee.z)<18)continue;
+    let bad=false;for(const p of H.ponds){if(Math.hypot((x-p.x)/p.rx,(z-p.z)/p.rz)<1.4){bad=true;break;}}if(bad)continue;
+    for(const b of H.bunkers){if(bunkerQ(b,x,z)<1.7){bad=true;break;}}if(bad)continue;
+    const pr=d<60?0.35:d<108?0.62:0.95;if(rnd()>pr)continue;
+    list.push({x,z,s:0.75+rnd()*0.75,pine:rnd()<0.45,c:rnd(),r:rnd()*6});}
+  for(let i=0;i<3000&&list.length<1320;i++){const x=(rnd()*2-1)*640,z=(rnd()*2-1)*640;if(Math.max(Math.abs(x),Math.abs(z))<298)continue;if(rnd()>0.6)continue;
+    list.push({x,z,s:0.9+rnd()*0.9,pine:rnd()<0.5,c:rnd(),r:rnd()*6});}
+  const nR=list.filter(t=>!t.pine).length,nP=list.length-nR;
+  const trunkMat=new THREE.MeshStandardMaterial({color:lc('#6b4a2e'),roughness:1,envMapIntensity:0.4});
+  const folMat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.9,flatShading:true,envMapIntensity:0.5});
+  const pineMat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.9,flatShading:true,envMapIntensity:0.5});
+  const trunks=new THREE.InstancedMesh(new THREE.CylinderGeometry(0.28,0.42,1,6).translate(0,0.5,0),trunkMat,list.length);
+  const rounds=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1,1),folMat,Math.max(1,nR));
+  const pines=new THREE.InstancedMesh(new THREE.ConeGeometry(1,1,8,1).translate(0,0.5,0),pineMat,Math.max(1,nP));
+  const RP=['#3b7431','#4a8534','#2f672b','#56903d','#3f6f2a'],PP=['#24503a','#2b5b3c','#1f4a33','#335f3a'];
+  const o=new THREE.Object3D(),col=new THREE.Color();let ir=0,ip=0;
+  list.forEach((t,i)=>{const h0=Hgt(t.x,t.z),s=t.s;
+    const th=t.pine?1.3*s:2.0*s;
+    o.position.set(t.x,h0-0.2,t.z);o.rotation.set(0,t.r,0);o.scale.set(s,th+0.2,s);o.updateMatrix();trunks.setMatrixAt(i,o.matrix);
+    if(t.pine){o.position.set(t.x,h0+th*0.8,t.z);o.scale.set(2.6*s,7.5*s,2.6*s);o.updateMatrix();pines.setMatrixAt(ip,o.matrix);
+      col.set(PP[Math.floor(t.c*PP.length)]).convertSRGBToLinear();pines.setColorAt(ip,col);ip++;}
+    else{o.position.set(t.x,h0+th+2.2*s,t.z);o.scale.set(3.1*s,3.5*s,3.1*s);o.updateMatrix();rounds.setMatrixAt(ir,o.matrix);
+      col.set(RP[Math.floor(t.c*RP.length)]).convertSRGBToLinear();rounds.setColorAt(ir,col);ir++;}});
+  rounds.count=ir;pines.count=ip;
+  [trunks,rounds,pines].forEach(m=>{m.castShadow=true;m.receiveShadow=true;m.frustumCulled=false;m.instanceMatrix.needsUpdate=true;if(m.instanceColor)m.instanceColor.needsUpdate=true;holeGroup.add(m);});}
+function buildPin(){
+  const y=Hgt(H.pin.x,H.pin.z),g=new THREE.Group();g.position.set(H.pin.x,y,H.pin.z);
+  const po={polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2};
+  const cup=new THREE.Mesh(new THREE.CircleGeometry(0.16,32).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial(Object.assign({color:0x050505},po)));cup.position.y=0.02;g.add(cup);
+  const lip=new THREE.Mesh(new THREE.RingGeometry(0.16,0.2,32).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial(Object.assign({color:lc('#f2f2f2')},po)));lip.position.y=0.021;g.add(lip);
+  const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.022,0.022,2.7,8).translate(0,1.35,0),new THREE.MeshStandardMaterial({color:lc('#f7f7f2'),roughness:0.4}));pole.castShadow=true;g.add(pole);
+  const knob=new THREE.Mesh(new THREE.SphereGeometry(0.045,12,8),new THREE.MeshStandardMaterial({color:lc('#ffd23f'),roughness:0.3,metalness:0.4}));knob.position.y=2.72;g.add(knob);
+  flagGroup=new THREE.Group();flagGroup.position.y=2.66;g.add(flagGroup);
+  const fg=new THREE.PlaneGeometry(1.15,0.72,14,6).translate(0.575,-0.36,0);
+  flagMesh=new THREE.Mesh(fg,new THREE.MeshStandardMaterial({color:lc('#e8323f'),side:THREE.DoubleSide,roughness:0.75}));flagMesh.castShadow=true;flagGroup.add(flagMesh);
+  flagBase=fg.attributes.position.array.slice();holeGroup.add(g);
+  // ティーマーカー
+  const tm=new THREE.MeshStandardMaterial({color:lc('#2e7dd1'),roughness:0.35,metalness:0.1});
+  [-3,3].forEach(dx=>{const s=new THREE.Mesh(new THREE.SphereGeometry(0.22,16,12),tm);s.position.set(H.tee.x+dx,Hgt(H.tee.x+dx,H.tee.z-2)+0.18,H.tee.z-2);s.castShadow=true;holeGroup.add(s);});}
+function buildGreenGrid(){
+  const g=H.green,r=g.r+1.2,step=1.25,seg=0.5,pts=[];
+  for(let a=-r;a<=r;a+=step){const half=Math.sqrt(Math.max(0,r*r-a*a));
+    for(let b=-half;b<half-seg;b+=seg){const x=g.x+a,z1=g.z+b,z2=z1+seg;pts.push(x,greenSurf(x,z1)+0.035,z1,x,greenSurf(x,z2)+0.035,z2);
+      const z=g.z+a,x1=g.x+b,x2=x1+seg;pts.push(x1,greenSurf(x1,z)+0.035,z,x2,greenSurf(x2,z)+0.035,z);}}
+  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pts,3));
+  gridObj=new THREE.LineSegments(geo,new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:0.28,depthWrite:false}));gridObj.visible=false;holeGroup.add(gridObj);
+  const N=150,pa=new Float32Array(N*3);flowData=[];for(let i=0;i<N;i++){flowData.push({x:0,z:0,l:-1});}
+  const fgeo=new THREE.BufferGeometry();fgeo.setAttribute('position',new THREE.BufferAttribute(pa,3));
+  flowObj=new THREE.Points(fgeo,new THREE.PointsMaterial({map:dotTex,color:lc('#fff6c9'),size:0.16,transparent:true,opacity:0.95,depthWrite:false}));
+  flowObj.visible=false;flowObj.frustumCulled=false;holeGroup.add(flowObj);}
+function updateFlow(dt){
+  if(!flowObj||!flowObj.visible)return;const a=flowObj.geometry.attributes.position.array,g=H.green;
+  for(let i=0;i<flowData.length;i++){const d=flowData[i];d.l-=dt;
+    if(d.l<=0||Math.hypot(d.x-g.x,d.z-g.z)>g.r){const an=Math.random()*Math.PI*2,rr=Math.sqrt(Math.random())*g.r*0.95;d.x=g.x+Math.cos(an)*rr;d.z=g.z+Math.sin(an)*rr;d.l=1.2+Math.random()*2;}
+    const gg=greenGrad(d.x,d.z);d.x-=gg[0]*30*dt;d.z-=gg[1]*30*dt;
+    a[i*3]=d.x;a[i*3+1]=greenSurf(d.x,d.z)+0.06;a[i*3+2]=d.z;}
+  flowObj.geometry.attributes.position.needsUpdate=true;}
+function updateFlag(){
+  if(!flagMesh)return;const p=flagMesh.geometry.attributes.position,a=p.array,w=0.6+S.wind.spd/5;
+  for(let i=0;i<a.length;i+=3){const x=flagBase[i];a[i+2]=Math.sin(x*5.2-T*6.5)*0.09*x*w+Math.sin(x*9-T*9)*0.02*x;a[i+1]=flagBase[i+1]-x*x*0.04*(1.5-w*0.45);}
+  p.needsUpdate=true;flagMesh.geometry.computeVertexNormals();}
+
+/* ================= ボール・演出 ================= */
+const ball=new THREE.Mesh(new THREE.SphereGeometry(R,24,16),new THREE.MeshStandardMaterial({color:lc('#ffffff'),roughness:0.32,envMapIntensity:0.9}));
+ball.castShadow=true;scene.add(ball);
+const TR_MAX=110,trailPts=[];
+const trailGeo=new THREE.BufferGeometry();trailGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(TR_MAX*2*3),3));
+{const idx=[];for(let i=0;i<TR_MAX-1;i++){const a=i*2,b=a+1,c=a+2,d=a+3;idx.push(a,b,c,b,d,c);}trailGeo.setIndex(idx);}
+const trail=new THREE.Mesh(trailGeo,new THREE.MeshBasicMaterial({color:lc('#fff1b8'),transparent:true,opacity:0.78,side:THREE.DoubleSide,depthWrite:false}));
+trail.frustumCulled=false;trail.visible=false;scene.add(trail);
+const ARC_MAX=420,arcGeo=new THREE.BufferGeometry();arcGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(ARC_MAX*3),3));
+const arcPts=new THREE.Points(arcGeo,new THREE.PointsMaterial({map:dotTex,color:lc('#ffe27a'),size:0.55,transparent:true,opacity:0.95,depthWrite:false}));
+arcPts.frustumCulled=false;arcPts.visible=false;scene.add(arcPts);
+const ring=new THREE.Group();
+ring.add(new THREE.Mesh(new THREE.RingGeometry(0.82,1,64).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:lc('#ffd84a'),transparent:true,opacity:0.95,depthWrite:false,side:THREE.DoubleSide})));
+ring.add(new THREE.Mesh(new THREE.CircleGeometry(0.82,64).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:lc('#ffd84a'),transparent:true,opacity:0.16,depthWrite:false,side:THREE.DoubleSide})));
+ring.visible=false;scene.add(ring);
+// パーティクル
+const PN=320,pGeo=new THREE.BufferGeometry(),pPos=new Float32Array(PN*3).fill(-9999),pCol=new Float32Array(PN*3),pVel=[],pLife=new Float32Array(PN);
+for(let i=0;i<PN;i++)pVel.push(new V3());
+pGeo.setAttribute('position',new THREE.BufferAttribute(pPos,3));pGeo.setAttribute('color',new THREE.BufferAttribute(pCol,3));
+const parts=new THREE.Points(pGeo,new THREE.PointsMaterial({map:dotTex,size:0.2,vertexColors:true,transparent:true,depthWrite:false}));parts.frustumCulled=false;scene.add(parts);
+let pNext=0;
+function emit(p,hexes,count,spd,up){const cs=hexes.map(h=>lc(h));for(let k=0;k<count;k++){const i=pNext;pNext=(pNext+1)%PN;
+  pPos[i*3]=p.x;pPos[i*3+1]=p.y+0.05;pPos[i*3+2]=p.z;const a=Math.random()*Math.PI*2,s=spd*(0.3+Math.random());
+  pVel[i].set(Math.cos(a)*s,up*(0.5+Math.random()),Math.sin(a)*s);pLife[i]=0.7+Math.random()*0.7;const c=cs[k%cs.length];pCol[i*3]=c.r;pCol[i*3+1]=c.g;pCol[i*3+2]=c.b;}
+  pGeo.attributes.color.needsUpdate=true;}
+function updateParts(dt){for(let i=0;i<PN;i++){if(pLife[i]<=0)continue;pLife[i]-=dt;if(pLife[i]<=0){pPos[i*3+1]=-9999;continue;}
+  pVel[i].y-=9.8*dt;pPos[i*3]+=pVel[i].x*dt;pPos[i*3+1]+=pVel[i].y*dt;pPos[i*3+2]+=pVel[i].z*dt;}pGeo.attributes.position.needsUpdate=true;}
+
+/* ================= 状態 ================= */
+const S={mode:'boot',hole:0,strokes:0,scores:[],ball:new V3(),vel:new V3(),last:new V3(),lie:'tee',club:0,clubs:[],aim:0,
+  wind:{x:0,z:0,spd:0,ang:0},gauge:{ph:'idle',g:0,dir:1,power:0},curve:0,right:new V3(),flightT:0,rollT:0,wait:0,view:'behind',
+  spinK:1,puttMax:20,dirty:true,aimHold:0,holdT:0,landed:false,targetPt:new V3(),hdir:new V3(0,0,-1),pinPos:new V3(),orbitC:new V3(),trailAcc:0,snap:false};
+let T=0;
+const tmpF=new V3(),hv=new V3(),tanV=new V3(),toC=new V3(),sideV=new V3();
+function aimDir(out){return out.set(Math.sin(S.aim),0,-Math.cos(S.aim));}
+function angleTo(x,z){return Math.atan2(x-S.ball.x,-(z-S.ball.z));}
+function distPin(){return Math.hypot(H.pin.x-S.ball.x,H.pin.z-S.ball.z);}
+function lieMul(c){if(S.lie==='bunker')return c.id==='SW'?0.88:0.62;return (SURF[S.lie]||SURF.fairway).mul;}
+function calcPuttMax(){return clamp(Math.ceil(distPin()*1.35/5)*5,5,40);}
+function availClubs(){const L=S.lie;if(L==='green')return [7];const l=[];for(let i=0;i<7;i++){if(i===0&&L!=='tee')continue;l.push(i);}
+  if(L==='fringe'||distPin()<16)l.push(7);return l;}
+function autoClub(){const L=S.lie,dp=distPin();if(L==='green')return 7;if(L==='fringe'&&dp<24)return 7;
+  const l=S.clubs.filter(i=>i!==7);let pick=l[0];for(const i of l){const c=CLUBS[i];if(c.dist*lieMul(c)>=dp*0.98)pick=i;}return pick;}
+function autoAim(){const c=CLUBS[S.club],dp=distPin();
+  if(c.id==='PT'){S.aim=angleTo(H.pin.x,H.pin.z);return;}
+  const carry=c.dist*lieMul(c);
+  if(dp<=carry*1.08){S.aim=angleTo(H.pin.x,H.pin.z);return;}
+  project(S.ball.x,S.ball.z);let best=null;for(let t=PR_T;t<=H.len;t+=2){const p=pointAt(t);if(Math.hypot(p.x-S.ball.x,p.z-S.ball.z)>=carry){best=p;break;}}
+  S.aim=best?angleTo(best.x,best.z):angleTo(H.pin.x,H.pin.z);}
+function isPutt(){return CLUBS[S.club].id==='PT';}
+function gridVis(){const v=S.mode==='aim'&&isPutt();gridObj.visible=v;flowObj.visible=v;}
+
+/* ================= サウンド ================= */
+let AC=null,NB=null;
+function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){AC=null;}}if(AC&&AC.state==='suspended')AC.resume();return AC;}
+function noiseBuf(a){if(NB)return NB;NB=a.createBuffer(1,a.sampleRate,a.sampleRate);const d=NB.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;return NB;}
+function tone(f1,f2,dur,vol,type,delay){const a=AC;if(!a)return;const t=a.currentTime+(delay||0),o=a.createOscillator(),g=a.createGain();o.type=type||'sine';
+  o.frequency.setValueAtTime(f1,t);o.frequency.exponentialRampToValueAtTime(Math.max(20,f2),t+dur);g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g);g.connect(a.destination);o.start(t);o.stop(t+dur+0.02);}
+function noise(freq,q,dur,vol,type,attack){const a=AC;if(!a)return;const t=a.currentTime,s=a.createBufferSource();s.buffer=noiseBuf(a);const f=a.createBiquadFilter();f.type=type||'bandpass';f.frequency.value=freq;f.Q.value=q;
+  const g=a.createGain();g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(vol,t+(attack||0.01));g.gain.exponentialRampToValueAtTime(0.0001,t+dur);s.connect(f);f.connect(g);g.connect(a.destination);s.start(t);s.stop(t+dur+0.05);}
+const sfx={
+  hit(p){if(p){tone(700,260,0.1,0.25,'triangle');}else{tone(1500,170,0.11,0.5,'triangle');noise(1100,0.8,0.55,0.32,'bandpass',0.015);}},
+  tick(){tone(900,900,0.05,0.12,'square');},
+  land(s){if(s==='bunker')noise(500,0.6,0.3,0.25,'lowpass');else tone(160,70,0.12,0.25,'sine');},
+  splash(){noise(700,0.5,0.9,0.35,'lowpass',0.02);},
+  cup(){tone(1250,1100,0.09,0.25,'triangle',0);tone(950,850,0.09,0.22,'triangle',0.1);tone(1150,1050,0.12,0.2,'triangle',0.22);},
+  cheer(){noise(1300,0.4,2.4,0.22,'bandpass',0.45);},
+};
+
+/* ================= HUD ================= */
+const elG={fill:$('gFill'),mk:$('gMarker'),pw:$('gPower'),tg:$('gTarget'),hint:$('gHint'),txt:$('gText')};
+[0.25,0.5,0.75,1].forEach(k=>{const d=document.createElement('div');d.className='g-tick';d.style.left=(6+94*k)+'%';$('gauge').insertBefore(d,elG.tg);});
+function gx(g){return (6+94*g)+'%';}
+function gaugeUI(){const g=S.gauge;
+  if(g.ph==='idle'){elG.fill.style.width='0';elG.mk.style.left=gx(0);elG.pw.style.display='none';elG.hint.style.display='';elG.txt.textContent='';}
+  else{elG.hint.style.display='none';
+    if(g.ph==='up'){elG.fill.style.width=(94*g.g)+'%';elG.pw.style.display='none';elG.txt.textContent=Math.round(g.g*100)+'%';}
+    else{elG.fill.style.width=(94*g.power)+'%';elG.pw.style.display='block';elG.pw.style.left=gx(g.power);elG.txt.textContent=Math.round(g.power*100)+'%';}
+    elG.mk.style.left=gx(g.g);}
+  const sb=$('shotBtn');sb.classList.toggle('hot',g.ph!=='idle');
+  $('shotSub').textContent=g.ph==='idle'?'スタート':g.ph==='up'?'パワー':'インパクト';}
+function hud(){
+  $('hNo').textContent=S.hole+1;$('hPar').textContent='PAR '+H.par;$('hYd').textContent=Math.round(H.len)+'Y';$('hStroke').textContent=S.strokes;
+  const dp=distPin();$('pinD').innerHTML=(dp<10?dp.toFixed(1):Math.round(dp))+'<small>Y</small>';
+  const sf=SURF[S.lie]||SURF.rough,chip=$('lie');chip.textContent=sf.name;chip.style.background=sf.col;chip.style.color=S.lie==='rough'?'#fff':'#10301a';
+  const e=Hgt(H.pin.x,H.pin.z)-(S.ball.y-R);$('elev').textContent=Math.abs(e)<0.3?'高低差なし':(e>0?'打ち上げ ':'打ち下ろし ')+Math.abs(e).toFixed(1)+'Y';
+  $('wSpd').innerHTML=S.wind.spd.toFixed(1)+'<small>m</small>';
+  const c=CLUBS[S.club];$('cName').textContent=c.id;
+  $('cDist').textContent=c.id==='PT'?'最大 '+S.puttMax+'Y':'キャリー '+Math.round(c.dist*lieMul(c))+'Y';
+  $('viewBtn').classList.toggle('on',S.view==='target');$('viewBtn').style.visibility=isPutt()?'hidden':'visible';
+  $('hudB').classList.toggle('busy',S.mode!=='aim');}
+function windUI(){$('wArrow').setAttribute('transform','rotate('+((S.wind.ang-S.aim)*180/Math.PI).toFixed(1)+' 24 24)');}
+function toast(big,sub,color){const t=$('toast');$('tBig').textContent=big;$('tSub').textContent=sub||'';$('tBig').style.color=color||'#fff';
+  t.classList.remove('show');void t.offsetWidth;t.classList.add('show');}
+
+/* ================= ショット ================= */
+function setupShot(){
+  S.mode='aim';S.vel.set(0,0,0);S.landed=false;S.lie=surfaceAt(S.ball.x,S.ball.z);
+  if(S.lie==='water'||S.lie==='ob')S.lie='rough';
+  S.clubs=availClubs();S.club=autoClub();S.puttMax=calcPuttMax();S.gauge.ph='idle';S.gauge.g=0;S.view='behind';
+  autoAim();trail.visible=false;trailPts.length=0;ball.visible=true;gridVis();S.dirty=true;gaugeUI();hud();windUI();}
+function predict(){
+  S.dirty=false;const c=CLUBS[S.club],f=aimDir(tmpF),arr=arcGeo.attributes.position.array;let n=0;
+  if(c.id==='PT'){for(let d=0.6;d<=S.puttMax&&n<ARC_MAX;d+=0.6){const x=S.ball.x+f.x*d,z=S.ball.z+f.z*d;arr[n*3]=x;arr[n*3+1]=Hgt(x,z)+0.05;arr[n*3+2]=z;n++;}
+    const x=S.ball.x+f.x*S.puttMax,z=S.ball.z+f.z*S.puttMax;ring.position.set(x,Hgt(x,z)+0.06,z);ring.scale.setScalar(0.45);S.targetPt.copy(ring.position);}
+  else{const carry=c.dist*lieMul(c),th=c.ang*Math.PI/180,v=Math.sqrt(carry*G/Math.sin(2*th));
+    let px=S.ball.x,py=S.ball.y,pz=S.ball.z,vx=f.x*v*Math.cos(th),vy=v*Math.sin(th),vz=f.z*v*Math.cos(th);const h=0.02;
+    for(let i=0;i<2500;i++){vy-=G*h;px+=vx*h;py+=vy*h;pz+=vz*h;const gy=Hgt(px,pz)+R;if(vy<0&&py<=gy){py=gy;break;}
+      if(i%4===0&&n<ARC_MAX){arr[n*3]=px;arr[n*3+1]=py;arr[n*3+2]=pz;n++;}}
+    ring.position.set(px,py+0.1,pz);ring.scale.setScalar(Math.max(1.4,carry*0.028));S.targetPt.set(px,py,pz);}
+  arcGeo.attributes.position.needsUpdate=true;arcGeo.setDrawRange(0,n);arcPts.visible=true;ring.visible=true;
+  const dp=distPin(),full=c.id==='PT'?S.puttMax:c.dist*lieMul(c),k=dp/full;
+  if(k<1){elG.tg.style.display='block';elG.tg.style.left=gx(k);}else elG.tg.style.display='none';
+  hud();}
+function shotPress(){ac();if(S.mode!=='aim')return;const g=S.gauge;
+  if(g.ph==='idle'){g.ph='up';g.g=0;g.dir=1;sfx.tick();}
+  else if(g.ph==='up'){g.power=Math.max(0.02,g.g);g.ph='down';sfx.tick();}
+  else if(g.ph==='down'){const err=g.g;g.ph='idle';fire(g.power,err);}
+  gaugeUI();}
+function updateGauge(dt){const g=S.gauge;if(g.ph==='idle')return;
+  if(g.ph==='up'){g.g+=g.dir*dt*0.95;if(g.g>=1){g.g=1;g.dir=-1;}if(g.dir<0&&g.g<=0){g.ph='idle';g.g=0;}}
+  else if(g.ph==='down'){g.g-=dt*1.2;if(g.g<=-0.065){g.ph='idle';fire(g.power,-0.075);}}
+  gaugeUI();}
+function fire(power,err){
+  const c=CLUBS[S.club];S.strokes++;S.last.copy(S.ball);arcPts.visible=false;ring.visible=false;gridObj.visible=false;flowObj.visible=false;
+  sfx.hit(c.id==='PT');const perfect=Math.abs(err)<0.012;elG.tg.style.display='none';
+  if(c.id==='PT'){const e=perfect?0:err,a=S.aim+e*0.25,d=power*S.puttMax,sp=Math.sqrt(2*SURF.green.mu*d)*1.02;
+    S.vel.set(Math.sin(a)*sp,0,-Math.cos(a)*sp);S.mode='roll';S.rollT=0;S.hdir.set(Math.sin(a),0,-Math.cos(a));}
+  else{let e=perfect?0:err;if(S.lie==='bunker')e+=(Math.random()-0.5)*0.03;else if(S.lie==='rough')e+=(Math.random()-0.5)*0.014;
+    const carry=c.dist*power*lieMul(c)*(perfect?1.03:1),a=S.aim+e*0.7,th=c.ang*Math.PI/180,v=Math.sqrt(Math.max(1,carry)*G/Math.sin(2*th));
+    S.vel.set(Math.sin(a)*v*Math.cos(th),v*Math.sin(th),-Math.cos(a)*v*Math.cos(th));S.right.set(Math.cos(a),0,Math.sin(a));
+    S.curve=e*55;S.spinK=c.spin;S.mode='flight';S.flightT=0;S.trailAcc=0;trailPts.length=0;trailPts.push(S.ball.clone());S.hdir.set(Math.sin(a),0,-Math.cos(a));
+    emit(S.ball,S.lie==='bunker'?['#f3e2b0','#e8d29a']:['#6fb84a','#8fcf5e','#5a9a3a'],S.lie==='bunker'?40:14,3,S.lie==='bunker'?4:2);
+    if(perfect)toast('NICE SHOT!','','#ffd23f');else if(Math.abs(e)>0.035)toast(e>0?'SLICE':'HOOK',e>0?'右に曲がる':'左に曲がる','#ffb3b3');}
+  hud();gaugeUI();}
+
+/* ================= 物理 ================= */
+function stepFlight(h){const v=S.vel,p=S.ball;
+  v.y-=G*h;v.x+=(S.wind.x*KW+S.right.x*S.curve)*h;v.z+=(S.wind.z*KW+S.right.z*S.curve)*h;p.addScaledVector(v,h);S.flightT+=h;
+  if(Math.abs(p.x)>HALF-3||Math.abs(p.z)>HALF-3){penalty('ob');return;}
+  const gy=Hgt(p.x,p.z)+R;if(p.y<=gy&&v.y<0){p.y=gy;land();}}
+function land(){const p=S.ball,s=surfaceAt(p.x,p.z),sp=S.vel.length();
+  if(Math.hypot(p.x-H.pin.x,p.z-H.pin.z)<0.22&&sp<30){holeOut();return;}
+  if(s==='water'){penalty('water');return;}
+  if(s==='ob'){penalty('ob');return;}
+  if(!S.landed){S.landed=true;sfx.land(s);
+    if(s==='bunker')emit(p,['#f3e2b0','#e8d29a','#fff1cc'],50,2.5,4.5);else emit(p,['#6fb84a','#8fcf5e','#a8dc7a'],12,1.6,1.8);}
+  const P=SURF[s],gg=grad(p.x,p.z),n=tmpF.set(-gg[0],1,-gg[1]).normalize(),vn=S.vel.dot(n);
+  if(vn<0)S.vel.addScaledVector(n,-(1+P.e)*vn);
+  const hk=P.h*((s==='green'||s==='fringe')?S.spinK:(0.7+0.3*S.spinK));S.vel.x*=hk;S.vel.z*=hk;
+  S.spinK=Math.min(1,S.spinK+0.3);S.curve*=0.3;
+  if(S.vel.y<1.3){S.vel.y=0;S.mode='roll';S.rollT=0;}}
+function stepRoll(h){const p=S.ball,v=S.vel;S.rollT+=h;project(p.x,p.z);const s=surfaceWith(p.x,p.z,PR_D,PR_T);
+  if(s==='water'){penalty('water');return;}if(s==='ob'){penalty('ob');return;}
+  const P=SURF[s],gg=grad(p.x,p.z),sk=s==='green'?1:0.55,ax=-G*gg[0]*sk,az=-G*gg[1]*sk,sp=Math.hypot(v.x,v.z),aS=Math.hypot(ax,az);
+  if(sp<0.05&&aS<P.mu*0.9){v.set(0,0,0);stopBall();return;}
+  if(sp>1e-6){const f=Math.min(P.mu*h,sp);v.x+=ax*h-v.x/sp*f;v.z+=az*h-v.z/sp*f;}else{v.x+=ax*h;v.z+=az*h;}
+  p.x+=v.x*h;p.z+=v.z*h;p.y=Hgt(p.x,p.z)+R;
+  const d=Math.hypot(p.x-H.pin.x,p.z-H.pin.z),sp2=Math.hypot(v.x,v.z);
+  if(d<0.14&&sp2<2.4){holeOut();return;}
+  if(d<0.2&&sp2>=2.4){v.multiplyScalar(0.92);}
+  if(S.rollT>30){v.set(0,0,0);stopBall();}}
+function stopBall(){S.mode='wait';S.wait=1.0;}
+function penalty(kind){S.mode='pen';S.strokes++;S.wait=1.8;S.vel.set(0,0,0);
+  if(kind==='water'){sfx.splash();emit(S.ball,['#ffffff','#bfe6ff','#7cc6f2'],60,2.2,5);S.ball.y=WL-0.2;toast('WATER','池に入りました。1打罰で打ち直し','#9fdcff');}
+  else toast('OB','コース外に出ました。1打罰で打ち直し','#ffffff');hud();}
+function scoreName(diff,st){if(st===1)return ['HOLE IN ONE!','ホールインワン'];
+  const m={'-3':['ALBATROSS','アルバトロス'],'-2':['EAGLE','イーグル'],'-1':['BIRDIE','バーディー'],'0':['PAR','パー'],'1':['BOGEY','ボギー'],'2':['DOUBLE BOGEY','ダブルボギー'],'3':['TRIPLE BOGEY','トリプルボギー']};
+  return m[String(diff)]||(diff<-3?['CONDOR','コンドル']:['+'+diff,diff+'オーバー']);}
+function holeOut(){S.mode='holed';S.scores[S.hole]=S.strokes;sfx.cup();const d=S.strokes-H.par,nm=scoreName(d,S.strokes);
+  toast(nm[0],nm[1]+'（'+S.strokes+'打）',d<0?'#ffd23f':'#ffffff');if(d<0||S.strokes===1)sfx.cheer();
+  emit(S.pinPos,['#ffd23f','#ffffff','#ff6b6b','#6fd3ff'],70,2.6,6);hud();setTimeout(showCard,2600);}
+
+/* ================= スコアカード ================= */
+function mark(sc,par){if(sc==null)return '<span class="mk">-</span>';const d=sc-par;const cls=d<=-2?'eg':d===-1?'bd':d===1?'bg':d>=2?'db':'';return '<span class="mk '+cls+'">'+sc+'</span>';}
+function showCard(){
+  S.mode='card';document.body.classList.add('dim');const last=S.hole===HOLES.length-1;
+  let hdr='<th></th>',pr='<td class="lab">PAR</td>',sr='<td class="lab">スコア</td>',tp=0,ts=0;
+  HOLES.forEach((h,i)=>{hdr+='<th>'+(i+1)+'</th>';pr+='<td>'+h.par+'</td>';sr+='<td>'+mark(S.scores[i],h.par)+'</td>';tp+=h.par;if(S.scores[i]!=null)ts+=S.scores[i];});
+  hdr+='<th>計</th>';pr+='<td class="tot">'+tp+'</td>';sr+='<td class="tot">'+(ts||'-')+'</td>';
+  const sc=S.scores[S.hole],d=sc-H.par,nm=scoreName(d,sc);
+  let top;
+  if(last){const played=HOLES.reduce((a,h,i)=>a+(S.scores[i]!=null?h.par:0),0),diff=ts-played;
+    top='<div class="result num">'+ts+'<span style="font-size:22px;margin-left:6px;color:var(--card-sub)">'+(diff===0?'E':(diff>0?'+':'')+diff)+'</span></div><div class="rsub">ラウンド終了。3ホールのトータルスコアです</div>';}
+  else top='<div class="result num" style="color:'+(d<0?'#e8413c':'var(--card-ink)')+'">'+nm[0]+'</div><div class="rsub">HOLE '+(S.hole+1)+'　'+nm[1]+'　'+sc+'打</div>';
+  $('cardBody').innerHTML=top+'<table class="sc"><tr>'+hdr+'</tr><tr>'+pr+'</tr><tr>'+sr+'</tr></table><button class="primary num" id="cardBtn">'+(last?'もう一度プレー':'HOLE '+(S.hole+2)+'へ')+'</button>';
+  $('cardOv').classList.remove('hidden');
+  $('cardBtn').onclick=()=>{ac();$('cardOv').classList.add('hidden');const next=last?0:S.hole+1;if(last)S.scores=[];goHole(next);};}
+function goHole(i){$('ldText').textContent='HOLE '+(i+1)+' を準備中…';$('loader').classList.remove('hidden');
+  setTimeout(()=>{loadHole(i);$('loader').classList.add('hidden');document.body.classList.remove('dim');startHole();},40);}
+
+/* ================= ホール読み込み ================= */
+function loadHole(i){
+  S.hole=i;prepHole(HOLES[i]);disposeGroup(holeGroup);
+  buildTerrain();buildWater();buildTrees();buildPin();buildGreenGrid();
+  S.strokes=0;S.ball.set(H.tee.x,Hgt(H.tee.x,H.tee.z)+R,H.tee.z);S.last.copy(S.ball);
+  const base=[1.2,2,2.5][i]||2,spd=base+Math.random()*3,ang=Math.random()*Math.PI*2;
+  S.wind={spd,ang,x:Math.sin(ang)*spd,z:-Math.cos(ang)*spd};
+  flagGroup.rotation.y=Math.atan2(Math.cos(ang),Math.sin(ang));
+  S.pinPos.set(H.pin.x,Hgt(H.pin.x,H.pin.z),H.pin.z);
+  S.orbitC.set((H.tee.x+H.green.x)/2,Hgt((H.tee.x+H.green.x)/2,(H.tee.z+H.green.z)/2),(H.tee.z+H.green.z)/2);
+  ball.visible=true;trail.visible=false;arcPts.visible=false;ring.visible=false;}
+function startHole(){setShadow(72);setupShot();S.snap=true;toast('HOLE '+(S.hole+1),'PAR '+H.par+'　'+Math.round(H.len)+'Y　'+H.name,'#ffffff');}
+
+/* ================= カメラ ================= */
+const camPos=new V3(),camLook=new V3(),dPos=new V3(),dLook=new V3();
+function updateCamera(dt){const b=S.ball;let k;
+  if(S.mode==='title'||S.mode==='boot'){const c=S.orbitC,a=T*0.07;dPos.set(c.x+Math.sin(a)*210,c.y+100,c.z+Math.cos(a)*210);dLook.copy(c);k=1-Math.exp(-dt*1.4);}
+  else if(S.mode==='aim'){const f=aimDir(tmpF),putt=isPutt();
+    if(S.view==='target'&&!putt){const t=S.targetPt;dPos.set(t.x-f.x*26,t.y+30,t.z-f.z*26);dLook.copy(t);}
+    else if(putt){const dp=Math.min(distPin(),20);dPos.set(b.x-f.x*(3.6+dp*0.14),b.y+1.3+dp*0.08,b.z-f.z*(3.6+dp*0.14));dLook.set(b.x+f.x*Math.max(3,dp*0.8),b.y-0.2,b.z+f.z*Math.max(3,dp*0.8));}
+    else{dPos.set(b.x-f.x*8.5,b.y+3.2,b.z-f.z*8.5);dLook.set(b.x+f.x*36,b.y+1.6,b.z+f.z*36);}
+    k=1-Math.exp(-dt*3.4);}
+  else if(S.mode==='flight'){if(S.flightT>0.55){hv.set(S.vel.x,0,S.vel.z);if(hv.lengthSq()>0.5)S.hdir.copy(hv.normalize());
+      dPos.set(b.x-S.hdir.x*12,b.y+4.2,b.z-S.hdir.z*12);dLook.set(b.x+S.hdir.x*5,b.y,b.z+S.hdir.z*5);}else dLook.copy(b);k=1-Math.exp(-dt*4.5);}
+  else if(S.mode==='holed'||S.mode==='card'){const p=S.pinPos,a=T*0.25;dPos.set(p.x+Math.sin(a)*6.5,p.y+2.6,p.z+Math.cos(a)*6.5);dLook.set(p.x,p.y+0.6,p.z);k=1-Math.exp(-dt*1.8);}
+  else{hv.set(S.vel.x,0,S.vel.z);if(hv.lengthSq()>0.01)S.hdir.copy(hv.normalize());const back=isPutt()?4.5:7;
+    dPos.set(b.x-S.hdir.x*back,b.y+(isPutt()?1.8:3),b.z-S.hdir.z*back);dLook.copy(b);k=1-Math.exp(-dt*2.6);}
+  if(S.snap){k=1;S.snap=false;}
+  camPos.lerp(dPos,k);camLook.lerp(dLook,k);const gy=Hgt(camPos.x,camPos.z)+1.0;if(camPos.y<gy)camPos.y=gy;
+  camera.position.copy(camPos);camera.lookAt(camLook);}
+
+/* ================= ループ ================= */
+function updateTrail(){const n=trailPts.length;if(n<2){trail.visible=false;return;}trail.visible=true;const a=trailGeo.attributes.position.array;
+  for(let i=0;i<n;i++){const p=trailPts[i],pv=trailPts[Math.max(0,i-1)],nx=trailPts[Math.min(n-1,i+1)];
+    tanV.subVectors(nx,pv);toC.subVectors(camera.position,p);sideV.crossVectors(tanV,toC);const L=sideV.length()||1;
+    const w=0.07*(0.25+0.75*i/(n-1))*clamp(p.distanceTo(camera.position)/14,1,6)/L;
+    a[i*6]=p.x+sideV.x*w;a[i*6+1]=p.y+sideV.y*w;a[i*6+2]=p.z+sideV.z*w;a[i*6+3]=p.x-sideV.x*w;a[i*6+4]=p.y-sideV.y*w;a[i*6+5]=p.z-sideV.z*w;}
+  trailGeo.attributes.position.needsUpdate=true;trailGeo.setDrawRange(0,(n-1)*6);}
+function update(dt){
+  T+=dt;timeU.value=T;updateFlag();updateGauge(dt);
+  if(S.mode==='aim'&&S.gauge.ph==='idle'&&S.aimHold){S.holdT+=dt;S.aim+=S.aimHold*(isPutt()?0.11:0.3)*Math.min(1,0.15+S.holdT*1.6)*dt;S.dirty=true;}
+  if(S.mode==='aim'&&S.dirty)predict();
+  if(S.mode==='aim')windUI();
+  if(S.mode==='flight'||S.mode==='roll'){const total=dt*SIM,steps=Math.ceil(total/(1/120)),h=total/steps;
+    for(let i=0;i<steps;i++){if(S.mode==='flight')stepFlight(h);else if(S.mode==='roll')stepRoll(h);else break;}
+    if(S.mode==='flight'||S.mode==='roll'){S.trailAcc+=dt;if(S.mode==='flight'&&S.trailAcc>0.03){S.trailAcc=0;trailPts.push(S.ball.clone());if(trailPts.length>TR_MAX)trailPts.shift();}}}
+  else if(S.mode==='wait'||S.mode==='pen'){S.wait-=dt;if(S.wait<=0){
+    if(S.mode==='pen'){S.ball.copy(S.last);S.ball.y=Hgt(S.ball.x,S.ball.z)+R;}
+    if(S.strokes>=H.par*2+2){S.mode='holed';S.scores[S.hole]=H.par*2+3;toast('PICK UP','規定打数に達したのでホールアウト','#ffffff');setTimeout(showCard,1600);}
+    else setupShot();}}
+  else if(S.mode==='holed'){const b=S.ball,p=S.pinPos;if(b.distanceTo(p)<3){b.x+=(p.x-b.x)*Math.min(1,dt*10);b.z+=(p.z-b.z)*Math.min(1,dt*10);b.y-=dt*0.6;if(b.y<p.y-0.3)ball.visible=false;}}
+  updateParts(dt);updateFlow(dt);updateTrail();
+  ball.position.copy(S.ball);
+  updateCamera(dt);
+  ball.scale.setScalar(clamp(camera.position.distanceTo(ball.position)/16,1,8));
+  const focus=(S.mode==='title'||S.mode==='boot')?S.orbitC:S.ball;
+  sun.target.position.copy(focus);sun.position.copy(focus).addScaledVector(SUN_DIR,280);
+  sky.position.copy(camera.position);
+  if(Math.floor(T*10)!==Math.floor((T-dt)*10)&&S.mode!=='title'&&S.mode!=='boot')hud();}
+let lastT=performance.now();
+function frame(now){requestAnimationFrame(frame);const dt=Math.min(0.05,Math.max(0,(now-lastT)/1000));lastT=now;if(H)update(dt);renderer.render(scene,camera);}
+
+/* ================= 入力 ================= */
+$('shotBtn').addEventListener('pointerdown',e=>{e.preventDefault();shotPress();});
+function holdBtn(id,dir){const el=$(id);const on=e=>{e.preventDefault();if(S.mode!=='aim'||S.gauge.ph!=='idle')return;S.aimHold=dir;S.holdT=0;S.view='behind';};
+  const off=()=>{S.aimHold=0;};el.addEventListener('pointerdown',on);['pointerup','pointerleave','pointercancel'].forEach(t=>el.addEventListener(t,off));}
+holdBtn('aimL',-1);holdBtn('aimR',1);
+function changeClub(d){if(S.mode!=='aim'||S.gauge.ph!=='idle')return;const l=S.clubs;let k=l.indexOf(S.club);k=(k+d+l.length)%l.length;S.club=l[k];
+  if(isPutt())S.puttMax=calcPuttMax();autoAim();gridVis();S.dirty=true;sfx.tick();hud();}
+$('clubPrev').addEventListener('click',()=>{ac();changeClub(-1);});$('clubNext').addEventListener('click',()=>{ac();changeClub(1);});
+$('viewBtn').addEventListener('click',()=>{if(S.mode!=='aim'||isPutt())return;S.view=S.view==='target'?'behind':'target';hud();});
+let drag=null;
+canvas.addEventListener('pointerdown',e=>{if(S.mode!=='aim'||S.gauge.ph!=='idle')return;drag={x:e.clientX,id:e.pointerId};try{canvas.setPointerCapture(e.pointerId);}catch(_){}});
+canvas.addEventListener('pointermove',e=>{if(!drag||e.pointerId!==drag.id)return;if(S.mode!=='aim'||S.gauge.ph!=='idle'){drag=null;return;}
+  const dx=e.clientX-drag.x;drag.x=e.clientX;S.aim+=dx*(isPutt()?0.0012:0.003);S.dirty=true;});
+['pointerup','pointercancel'].forEach(t=>canvas.addEventListener(t,()=>{drag=null;}));
+addEventListener('keydown',e=>{if(e.repeat&&e.code==='Space')return;
+  if(e.code==='Space'){e.preventDefault();shotPress();}
+  else if(e.code==='ArrowLeft'||e.code==='ArrowRight'){if(S.mode==='aim'&&S.gauge.ph==='idle'&&!S.aimHold){S.aimHold=e.code==='ArrowLeft'?-1:1;S.holdT=0;}}
+  else if(e.code==='ArrowUp')changeClub(-1);else if(e.code==='ArrowDown')changeClub(1);
+  else if(e.code==='KeyV')$('viewBtn').click();});
+addEventListener('keyup',e=>{if(e.code==='ArrowLeft'||e.code==='ArrowRight')S.aimHold=0;});
+$('playBtn').addEventListener('click',()=>{ac();$('title').classList.add('hidden');document.body.classList.remove('dim');S.scores=[];startHole();});
+
+/* ================= 起動 ================= */
+$('ldText').textContent='コースを生成中…';
+setTimeout(()=>{try{loadHole(0);}catch(err){$('ldText').textContent='コースの生成に失敗しました：'+err.message;return;}
+  S.mode='title';setShadow(230);$('loader').classList.add('hidden');$('title').classList.remove('hidden');hud();
+  const c=S.orbitC;camPos.set(c.x+210,c.y+100,c.z);camLook.copy(c);requestAnimationFrame(frame);},60);
+})();
+</script>
+</body>
+</html>
