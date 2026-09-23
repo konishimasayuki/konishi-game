@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>KONISHI GAME</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#e9e6df;--ink:#1a1c20;--sub:#5d626c;--card:#ffffff;--off:#d6d2c9;
+  --cone:#ff6a13;--safety:#ffd21f;--sign:#1f5fd6;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){--bg:#17191d;--ink:#f1f2f4;--sub:#9aa1ad;--card:#23262c;--off:#2c3037;}
+}
+:root[data-theme="dark"]{--bg:#17191d;--ink:#f1f2f4;--sub:#9aa1ad;--card:#23262c;--off:#2c3037;}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);min-height:100%;
+  font-family:"Hiragino Sans","Noto Sans JP","Yu Gothic",system-ui,sans-serif}
+.wrap{max-width:560px;margin:0 auto;padding:28px 18px 40px}
+header{position:relative;padding:22px 0 26px}
+h1{font-family:"Dela Gothic One","Hiragino Sans",sans-serif;font-weight:400;margin:0;
+  font-size:clamp(40px,12vw,64px);line-height:.95;letter-spacing:.01em}
+h1 span{display:block}
+.stripe{height:12px;margin-top:16px;border-radius:3px;
+  background:repeating-linear-gradient(135deg,var(--safety) 0 14px,#1a1c20 14px 28px)}
+header p{margin:14px 0 0;color:var(--sub);font-size:14px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media (min-width:520px){.grid{grid-template-columns:repeat(3,1fr)}}
+.slot{position:relative;display:flex;flex-direction:column;justify-content:space-between;
+  aspect-ratio:3/4;padding:12px;border-radius:12px;text-decoration:none;color:var(--ink);
+  background:var(--card);border:2px solid transparent;overflow:hidden}
+a.slot{box-shadow:0 5px 0 var(--ink)}
+a.slot:active{transform:translateY(4px);box-shadow:0 1px 0 var(--ink)}
+a.slot:focus-visible{outline:3px solid var(--sign);outline-offset:3px}
+.slot.off{background:var(--off);border:2px dashed rgba(128,128,128,.45);color:var(--sub)}
+.num{font-family:"Dela Gothic One",sans-serif;font-size:54px;line-height:1}
+a.slot .num{color:var(--cone)}
+.emoji{position:absolute;right:10px;top:12px;font-size:30px}
+.name{font-weight:800;font-size:14px;line-height:1.35}
+.desc{font-size:11px;color:var(--sub);margin-top:4px;line-height:1.5}
+.soon{font-size:12px;font-weight:700}
+footer{margin-top:30px;font-size:12px;color:var(--sub);text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><span>KONISHI</span><span>GAME</span></h1>
+    <div class="stripe"></div>
+    <p>遊びたい番号を選んでね</p>
+  </header>
+  <main class="grid" id="grid"></main>
+  <footer>© KONISHI GAME</footer>
+</div>
+<script>
+/* ゲームを増やすときはここに1行足すだけ。file を空にすると「準備中」表示 */
+const GAMES = [
+  { no: 1, file: "1.html", title: "あけろ！爆裂駐車場", emoji: "🚗", desc: "入ってくる車をぶっ壊して駐車場をあけろ" },
+  { no: 2, file: "", title: "", emoji: "", desc: "" },
+  { no: 3, file: "", title: "", emoji: "", desc: "" },
+  { no: 4, file: "", title: "", emoji: "", desc: "" },
+  { no: 5, file: "", title: "", emoji: "", desc: "" },
+  { no: 6, file: "", title: "", emoji: "", desc: "" },
+];
+const grid = document.getElementById("grid");
+grid.innerHTML = GAMES.map(g => g.file
+  ? `<a class="slot" href="${g.file}"><span class="emoji">${g.emoji}</span><span class="num">${g.no}</span><span><span class="name">${g.title}</span><span class="desc">${g.desc}</span></span></a>`
+  : `<div class="slot off" aria-disabled="true"><span class="num">${g.no}</span><span class="soon">準備中</span></div>`
+).join("");
+</script>
+</body>
+</html>
